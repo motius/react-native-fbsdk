@@ -18,13 +18,16 @@
 
 #import "RCTFBSDKAppEvents.h"
 
+#import <React/RCTUtils.h>
+
 #import "RCTConvert+FBSDKAccessToken.h"
+#import "FBSDKCoreKit/FBSDKAppEventsUtility.h"
 
 @implementation RCTConvert (RCTFBSDKAppEvents)
 
 RCT_ENUM_CONVERTER(FBSDKAppEventsFlushBehavior, (@{
   @"auto": @(FBSDKAppEventsFlushBehaviorAuto),
-  @"explicit-only": @(FBSDKAppEventsFlushBehaviorExplicitOnly),
+  @"explicit_only": @(FBSDKAppEventsFlushBehaviorExplicitOnly),
 }), FBSDKAppEventsFlushBehaviorAuto, unsignedIntegerValue)
 
 @end
@@ -44,6 +47,8 @@ RCT_EXPORT_METHOD(logEvent:(NSString *)eventName
                 valueToSum:(nonnull NSNumber *)valueToSum
                 parameters:(NSDictionary *)parameters)
 {
+  parameters = RCTDictionaryWithoutNullValues(parameters);
+
   [FBSDKAppEvents logEvent:eventName
                 valueToSum:valueToSum
                 parameters:parameters
@@ -54,6 +59,8 @@ RCT_EXPORT_METHOD(logPurchase:(double)purchaseAmount
                      currency:(NSString *)currency
                    parameters:(NSDictionary *)parameters)
 {
+  parameters = RCTDictionaryWithoutNullValues(parameters);
+
   [FBSDKAppEvents logPurchase:purchaseAmount
                      currency:currency
                    parameters:parameters
@@ -63,6 +70,63 @@ RCT_EXPORT_METHOD(logPurchase:(double)purchaseAmount
 RCT_EXPORT_METHOD(logPushNotificationOpen:(NSDictionary *)payload)
 {
   [FBSDKAppEvents logPushNotificationOpen:payload];
+}
+
+RCT_EXPORT_METHOD(setUserID:(NSString *)userID)
+{
+  [FBSDKAppEvents setUserID:userID];
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(getUserID)
+{
+  return [FBSDKAppEvents userID];
+}
+
+RCT_EXPORT_METHOD(getAnonymousID:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  @try {
+    NSString *anonymousID = [FBSDKAppEvents anonymousID];
+    resolve(anonymousID);
+  }
+  @catch (NSError *error) {
+    reject(@"E_ANONYMOUS_ID_ERROR", @"Can not get anonymousID", error);
+  }
+}
+
+RCT_EXPORT_METHOD(getAdvertiserID:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  @try {
+    NSString *advertiserID = [FBSDKAppEventsUtility advertiserID];
+    resolve(advertiserID);
+  }
+  @catch (NSError *error) {
+    reject(@"E_ADVERTISER_ID_ERROR", @"Can not get advertiserID", error);
+  }
+}
+
+RCT_EXPORT_METHOD(updateUserProperties:(NSDictionary *)parameters)
+{
+  parameters = RCTDictionaryWithoutNullValues(parameters);
+
+  [FBSDKAppEvents updateUserProperties:parameters handler:nil];
+}
+
+RCT_EXPORT_METHOD(setUserData:(NSDictionary *)userData)
+{
+  userData = RCTDictionaryWithoutNullValues(userData);
+
+  [FBSDKAppEvents setUserEmail:userData[@"email"]
+                     firstName:userData[@"firstName"]
+                      lastName:userData[@"lastName"]
+                         phone:userData[@"phone"]
+                   dateOfBirth:userData[@"dateOfBirth"]
+                        gender:userData[@"gender"]
+                          city:userData[@"city"]
+                         state:userData[@"state"]
+                           zip:userData[@"zip"]
+                       country:userData[@"country"]];
 }
 
 RCT_EXPORT_METHOD(setFlushBehavior:(FBSDKAppEventsFlushBehavior)flushBehavior)
@@ -78,6 +142,18 @@ RCT_EXPORT_METHOD(flush)
 RCT_EXPORT_METHOD(setPushNotificationsDeviceToken:(NSString *)deviceToken)
 {
   [FBSDKAppEvents setPushNotificationsDeviceToken:[RCTConvert NSData:deviceToken]];
+}
+
+static NSDictionary<NSString *, id> *RCTDictionaryWithoutNullValues(NSDictionary<NSString *, id> *input)
+{
+  if (input == nil) {
+    return nil;
+  }
+  NSMutableDictionary<NSString *, id> *result = [[NSMutableDictionary alloc] initWithCapacity:[input count]];
+  [input enumerateKeysAndObjectsUsingBlock:^(NSString *key, id item, __unused BOOL *stop) {
+    result[key] = RCTNilIfNull(item);
+  }];
+  return result;
 }
 
 @end
